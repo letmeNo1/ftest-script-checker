@@ -6,106 +6,147 @@ export function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('ftest');
     context.subscriptions.push(diagnosticCollection);
 
-    // 监听文件变化，实时校验
-    vscode.workspace.onDidOpenTextDocument(validateScript);
-    vscode.workspace.onDidChangeTextDocument(e => validateScript(e.document));
-    vscode.workspace.onDidSaveTextDocument(validateScript);
+    // 监听文件变化
+    vscode.workspace.onDidOpenTextDocument(doc => {
+        validateScript(doc);
+        highlightTestCaseName(doc);
+    });
+    vscode.workspace.onDidChangeTextDocument(e => {
+        validateScript(e.document);
+        highlightTestCaseName(e.document);
+    });
+    vscode.workspace.onDidSaveTextDocument(doc => {
+        validateScript(doc);
+        highlightTestCaseName(doc);
+    });
 
     if (vscode.window.activeTextEditor) {
         validateScript(vscode.window.activeTextEditor.document);
+        highlightTestCaseName(vscode.window.activeTextEditor.document);
     }
 }
 
-// ftest 脚本核心校验逻辑
+// =============================================================================
+// 【高亮】testcase_name 显示为蓝色（可自己改颜色）
+// =============================================================================
+function highlightTestCaseName(document: vscode.TextDocument) {
+    if (document.languageId !== 'ftest') return;
+
+    const decorations: vscode.DecorationOptions[] = [];
+    const text = document.getText();
+    const lines = text.split('\n');
+
+    // 定义样式：蓝色加粗
+    const testCaseNameDecoration = vscode.window.createTextEditorDecorationType({
+        color: '#4FC1FF', // 蓝色 → 可自己改颜色
+        fontWeight: 'bold',
+        fontSize: '13px'
+    });
+
+    lines.forEach((line, lineNum) => {
+        const trim = line.trim();
+        if (trim.startsWith('testcase_name:')) {
+            const match = line.match(/testcase_name:/);
+            if (match) {
+                const startPos = match.index!;
+                const endPos = startPos + match[0].length;
+                const range = new vscode.Range(lineNum, startPos, lineNum, endPos);
+                decorations.push({ range });
+            }
+        }
+    });
+
+    const editor = vscode.window.activeTextEditor;
+    if (editor && editor.document === document) {
+        editor.setDecorations(testCaseNameDecoration, decorations);
+    }
+}
+
+// =============================================================================
+// 【语法校验】
+// =============================================================================
 function validateScript(document: vscode.TextDocument) {
-    // 只校验 .ftest 文件
     if (document.languageId !== 'ftest') {
         diagnosticCollection.clear();
         return;
     }
 
     const diagnostics: vscode.Diagnostic[] = [];
-    const lines = document.getText().split('\n').map(line => line.trimEnd());
+    const lines = document.getText().split('\n');
     const hasTestCaseName = lines.some(line => line.trim().startsWith('testcase_name:'));
+    
     let inStep = false;
 
     lines.forEach((line, lineNum) => {
         const trimLine = line.trim();
-        if (!trimLine) return;
+        if (!trimLine || trimLine.startsWith('#')) return;
 
-        // 1. 校验用例名称
+        // 1. 顶层 testcase_name
         if (trimLine.startsWith('testcase_name:')) {
-            const value = trimLine.split(':')[1]?.trim();
+            const value = trimLine.split(':', 2)[1]?.trim();
             if (!value) addError(diagnostics, lineNum, 'testcase_name 不能为空');
             return;
         }
 
-        // 2. 匹配任意 step 步骤
-        if (trimLine.match(/^step\d+:/)) {
+        // 2. step 块
+        if (trimLine.match(/^step\d*:/)) {
             inStep = true;
             return;
         }
 
-        // 3. Step 内部语法校验
-        if (inStep) {
-            const hasAssign = trimLine.includes('=');
-            const hasAssert = /==|<|>/.test(trimLine);
+        // 不在 step 内 → 非法
+        if (!inStep) {
+            addError(diagnostics, lineNum, '非法语句：必须写在 step 内部');
+            return;
+        }
 
-            // 禁止赋值和断言混用
-            if (hasAssign && hasAssert) {
-                addError(diagnostics, lineNum, '语法错误：一行只能是赋值(=) 或 断言(==/< >)');
+        // ====================
+        // step 内部语法
+        // ====================
+        const hasAssign = trimLine.includes('=');
+        const hasAssert = /==|<|>/.test(trimLine);
+
+        if (hasAssign && hasAssert) {
+            addError(diagnostics, lineNum, '一行只能是赋值(=)或断言(==/<>)');
+            return;
+        }
+
+        if (hasAssign) {
+            const parts = trimLine.split('=').map(i => i.trim());
+            if (parts.length !== 2) {
+                addError(diagnostics, lineNum, '赋值格式：key = value');
                 return;
             }
 
-            // 赋值语句校验
-            if (hasAssign) {
-                const parts = trimLine.split('=').map(i => i.trim());
-                if (parts.length !== 2) {
-                    addError(diagnostics, lineNum, '赋值格式错误：正确写法 key = value');
-                    return;
-                }
-                const [key, value] = parts;
-                const validKeys = ['bat_voltage', 'inject_hook', 'delay'];
-                
-                if (!validKeys.includes(key)) {
-                    addError(diagnostics, lineNum, `仅支持字段：${validKeys.join('/')}`);
-                    return;
-                }
+            const [key, value] = parts;
 
-                // 值类型校验
-                switch (key) {
-                    case 'bat_voltage':
-                    case 'delay':
-                        if (isNaN(Number(value))) addError(diagnostics, lineNum, `${key} 必须是数字`);
-                        break;
-                    case 'inject_hook':
-                        if (!value.match(/^0x[0-9a-fA-F]+$/) && isNaN(Number(value))) {
-                            addError(diagnostics, lineNum, 'inject_hook 必须是0x开头十六进制或数字');
-                        }
-                        break;
-                }
+            // key 必须是合法字符（字母/下划线/数字，不能以数字开头）
+            const keyReg = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+            if (!keyReg.test(key)) {
+                addError(diagnostics, lineNum, 'key 必须是字母/下划线开头的合法字符');
+                return;
             }
-            // 断言语句校验
-            else if (hasAssert) {
-                if (!trimLine.includes('app_bat_ctx.voltage')) {
-                    addError(diagnostics, lineNum, '断言必须使用固定变量：app_bat_ctx.voltage');
-                }
+        }
+        else if (hasAssert) {
+            if (!trimLine.includes('app_bat_ctx.voltage')) {
+                addError(diagnostics, lineNum, '断言必须使用 app_bat_ctx.voltage');
             }
-            // 无效语法
-            else {
-                addError(diagnostics, lineNum, '仅支持赋值语句(=)或断言语句(==/< >)');
-            }
+        }
+        else {
+            addError(diagnostics, lineNum, '仅支持赋值或断言语句');
         }
     });
 
-    // 全局必填项校验
-    if (!hasTestCaseName) addError(diagnostics, 0, '缺失必填字段：testcase_name');
+    if (!hasTestCaseName) {
+        addError(diagnostics, 0, '必须包含 testcase_name');
+    }
+
     diagnosticCollection.set(document.uri, diagnostics);
 }
 
-// 添加错误提示
+// 添加错误
 function addError(diag: vscode.Diagnostic[], line: number, message: string) {
-    const range = new vscode.Range(line, 0, line, 1000);
+    const range = new vscode.Range(line, 0, line, Number.MAX_VALUE);
     diag.push(new vscode.Diagnostic(range, message, vscode.DiagnosticSeverity.Error));
 }
 

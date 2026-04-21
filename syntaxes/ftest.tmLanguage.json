@@ -5,20 +5,22 @@
     "fileTypes": ["ftest"],
     "patterns": [
         {
+            "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_.]*)\\s*(=)",
+            "captures": {
+                "1": { "name": "support.variable.ftest" },
+                "2": { "name": "keyword.operator.assignment.ftest" }
+            }
+        },
+        {
+            "match": "^\\s*(testcase_name)\\s*:\\s*(.*)$",
+            "captures": {
+                "1": { "name": "keyword.control.ftest" },
+                "2": { "name": "string.unquoted.ftest" }
+            }
+        },
+        {
             "name": "keyword.control.ftest",
-            "match": "^\\s*(testcase_name|step\\d+)"
-        },
-        {
-            "name": "variable.language.ftest",
-            "match": "app_bat_ctx\\.voltage"
-        },
-        {
-            "name": "constant.language.ftest",
-            "match": "\\b(bat_voltage|inject_hook|delay)\\b"
-        },
-        {
-            "name": "keyword.operator.assignment.ftest",
-            "match": "="
+            "match": "^\\s*(step\\d*):"
         },
         {
             "name": "keyword.operator.comparison.ftest",
@@ -31,13 +33,6 @@
         {
             "name": "constant.numeric.integer.ftest",
             "match": "\\b\\d+\\b"
-        },
-        {
-            "name": "string.quoted.single.ftest",
-            "match": ":\\s*(.+)$",
-            "captures": {
-                "1": { "name": "string.unquoted.ftest" }
-            }
         }
     ]
 }
