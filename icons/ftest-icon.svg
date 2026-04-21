@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- 背景：仿 JS 黄色 -->
+  <rect width="32" height="32" rx="4" fill="#F7DF1E"/>
+  <!-- 文字 FT（粗体、居中） -->
+  <text x="16" y="21" font-size="14" font-weight="bold" text-anchor="middle" font-family="Arial, sans-serif" fill="#000000">FT</text>
+</svg>

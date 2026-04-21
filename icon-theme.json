@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vscode/main/extensions/theme-defaults/schemas/icon-theme.schema.json",
+  "iconDefinitions": {
+    "ftest-icon": {
+      "iconPath": "./icons/ftest-icon.svg"
+    }
+  },
+  "fileExtensions": {
+    "ftest": "ftest-icon",
+    "ft": "ftest-icon"
+  }
+}

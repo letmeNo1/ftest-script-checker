@@ -1,8 +1,10 @@
 {
   "name": "ftest-script-checker",
   "displayName": "ftest-script-checker",
-  "description": "The script format for verifying ftest",
+  "description": "Fake Input Test 脚本语法校验、高亮、自动图标",
   "version": "0.0.1",
+  "repository": {},
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.116.0"
   },
@@ -17,9 +19,12 @@
     "languages": [
       {
         "id": "ftest",
-        "aliases": ["ftest Script", "ftest"],
-        "extensions": [".ftest",".ft"],
-        "configuration": "./language-configuration.json"
+        "aliases": ["ftest Script", "ft"],
+        "extensions": [".ftest", ".ft"],
+        "icon": {
+          "light": "./icons/ftest-icon.svg",
+          "dark": "./icons/ftest-icon.svg"
+        }
       }
     ],
     "grammars": [
