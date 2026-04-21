@@ -1,7 +1,7 @@
 {
-  "name": "ftest-script-checker",
-  "displayName": "ftest-script-checker",
-  "description": "Fake Input Test 脚本语法校验、高亮、自动图标",
+  "name": "Ftest",
+  "displayName": "Ftest",
+  "description": "Fake Input Test script language support for Visual Studio Code.",
   "version": "0.0.1",
   "repository": {},
   "icon": "images/icon.png",
