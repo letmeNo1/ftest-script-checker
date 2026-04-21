@@ -6,7 +6,7 @@ export function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('ftest');
     context.subscriptions.push(diagnosticCollection);
 
-    // 监听文件变化
+    // Listen for file changes
     vscode.workspace.onDidOpenTextDocument(doc => {
         validateScript(doc);
         highlightTestCaseName(doc);
@@ -27,7 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // =============================================================================
-// 【高亮】testcase_name 显示为蓝色（可自己改颜色）
+// Highlight testcase_name in blue (color customizable)
 // =============================================================================
 function highlightTestCaseName(document: vscode.TextDocument) {
     if (document.languageId !== 'ftest') return;
@@ -36,9 +36,9 @@ function highlightTestCaseName(document: vscode.TextDocument) {
     const text = document.getText();
     const lines = text.split('\n');
 
-    // 定义样式：蓝色加粗
+    // Style: blue bold
     const testCaseNameDecoration = vscode.window.createTextEditorDecorationType({
-        color: '#4FC1FF', // 蓝色 → 可自己改颜色
+        color: '#4FC1FF',
         fontWeight: 'bold',
         fontSize: '13px'
     });
@@ -63,7 +63,7 @@ function highlightTestCaseName(document: vscode.TextDocument) {
 }
 
 // =============================================================================
-// 【语法校验】修复赋值/断言误判问题
+// Syntax validation (fixed assignment/assertion misjudgment)
 // =============================================================================
 function validateScript(document: vscode.TextDocument) {
     if (document.languageId !== 'ftest') {
@@ -81,69 +81,69 @@ function validateScript(document: vscode.TextDocument) {
         const trimLine = line.trim();
         if (!trimLine || trimLine.startsWith('#')) return;
 
-        // 1. 顶层 testcase_name
+        // Top-level testcase_name
         if (trimLine.startsWith('testcase_name:')) {
             const value = trimLine.split(':', 2)[1]?.trim();
-            if (!value) addError(diagnostics, lineNum, 'testcase_name 不能为空');
+            if (!value) addError(diagnostics, lineNum, 'testcase_name cannot be empty');
             return;
         }
 
-        // 2. step 块
+        // Step block
         if (trimLine.match(/^step\d*:/)) {
             inStep = true;
             return;
         }
 
-        // 不在 step 内 → 非法
+        // Not inside step → invalid
         if (!inStep) {
-            addError(diagnostics, lineNum, '非法语句：必须写在 step 内部');
+            addError(diagnostics, lineNum, 'Invalid statement: must be inside a step block');
             return;
         }
 
         // ====================
-        // step 内部语法（修复赋值/断言误判）
+        // Syntax inside step
         // ====================
-        // 匹配：前后不是=、<、>的单个=，避免误判==/<=/>=
+        // Match single = (not part of ==/<=/>=) to avoid misjudgment
         const hasAssign = /(?<!=|>|<)=(?!=|>|<)/.test(trimLine);
         const hasAssert = /==|<=|>=|<|>/.test(trimLine);
 
         if (hasAssign && hasAssert) {
-            addError(diagnostics, lineNum, '一行只能是赋值(=)或断言(==/<>)');
+            addError(diagnostics, lineNum, 'Only assignment (=) or assertion (==/<>) allowed per line');
             return;
         }
 
         if (hasAssign) {
             const parts = trimLine.split('=').map(i => i.trim());
             if (parts.length !== 2) {
-                addError(diagnostics, lineNum, '赋值格式：key = value');
+                addError(diagnostics, lineNum, 'Assignment format: key = value');
                 return;
             }
 
             const [key, value] = parts;
 
-            // key 必须是合法字符（字母/下划线/数字，不能以数字开头）
+            // Key must be valid (letters/underscores/numbers, cannot start with number)
             const keyReg = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
             if (!keyReg.test(key)) {
-                addError(diagnostics, lineNum, 'key 必须是字母/下划线开头的合法字符');
+                addError(diagnostics, lineNum, 'Key must start with a letter or underscore');
                 return;
             }
         }
         else if (hasAssert) {
-            // 无任何强制变量要求，支持任意变量断言：xxx==222 / a>10 / b<=5 等
+            // Support any variable for assertion
         }
         else {
-            addError(diagnostics, lineNum, '仅支持赋值或断言语句');
+            addError(diagnostics, lineNum, 'Only assignment or assertion statements are supported');
         }
     });
 
     if (!hasTestCaseName) {
-        addError(diagnostics, 0, '必须包含 testcase_name');
+        addError(diagnostics, 0, 'testcase_name is required');
     }
 
     diagnosticCollection.set(document.uri, diagnostics);
 }
 
-// 添加错误
+// Add error diagnostic
 function addError(diag: vscode.Diagnostic[], line: number, message: string) {
     const range = new vscode.Range(line, 0, line, Number.MAX_VALUE);
     diag.push(new vscode.Diagnostic(range, message, vscode.DiagnosticSeverity.Error));
