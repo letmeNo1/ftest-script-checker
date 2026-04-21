@@ -5,13 +5,12 @@
     "fileTypes": ["ftest"],
     "patterns": [
         {
-            "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_.]*)\\s*(=)",
-            "captures": {
-                "1": { "name": "support.variable.ftest" },
-                "2": { "name": "keyword.operator.assignment.ftest" }
-            }
+            "comment": "单行注释 #",
+            "match": "^\\s*#.*$",
+            "name": "comment.line.ftest"
         },
         {
+            "comment": "testcase_name 关键字",
             "match": "^\\s*(testcase_name)\\s*:\\s*(.*)$",
             "captures": {
                 "1": { "name": "keyword.control.ftest" },
@@ -19,18 +18,38 @@
             }
         },
         {
+            "comment": "step 关键字",
             "name": "keyword.control.ftest",
             "match": "^\\s*(step\\d*):"
         },
         {
-            "name": "keyword.operator.comparison.ftest",
-            "match": "==|<|>"
+            "comment": "赋值语句：变量 = 值（行首）",
+            "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_.]*)\\s*(=)",
+            "captures": {
+                "1": { "name": "support.variable.assignment.ftest" },
+                "2": { "name": "keyword.operator.assignment.ftest" }
+            }
         },
         {
+            "comment": "断言语句：匹配所有比较运算符（优先匹配长运算符）",
+            "name": "keyword.operator.comparison.ftest",
+            "match": "==|<=|>=|<|>"
+        },
+        {
+            "comment": "断言语句中的变量（前后带比较运算符）",
+            "match": "(?:==|<=|>=|<|>)\\s*([a-zA-Z_][a-zA-Z0-9_.]*)|([a-zA-Z_][a-zA-Z0-9_.]*)\\s*(?:==|<=|>=|<|>)",
+            "captures": {
+                "1": { "name": "variable.parameter.assertion.ftest" },
+                "2": { "name": "variable.parameter.assertion.ftest" }
+            }
+        },
+        {
+            "comment": "十六进制数字",
             "name": "constant.numeric.hex.ftest",
             "match": "0x[0-9a-fA-F]+"
         },
         {
+            "comment": "十进制数字",
             "name": "constant.numeric.integer.ftest",
             "match": "\\b\\d+\\b"
         }

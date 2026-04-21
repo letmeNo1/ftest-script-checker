@@ -63,7 +63,7 @@ function highlightTestCaseName(document: vscode.TextDocument) {
 }
 
 // =============================================================================
-// 【语法校验】
+// 【语法校验】修复赋值/断言误判问题
 // =============================================================================
 function validateScript(document: vscode.TextDocument) {
     if (document.languageId !== 'ftest') {
@@ -101,10 +101,11 @@ function validateScript(document: vscode.TextDocument) {
         }
 
         // ====================
-        // step 内部语法
+        // step 内部语法（修复赋值/断言误判）
         // ====================
-        const hasAssign = trimLine.includes('=');
-        const hasAssert = /==|<|>/.test(trimLine);
+        // 匹配：前后不是=、<、>的单个=，避免误判==/<=/>=
+        const hasAssign = /(?<!=|>|<)=(?!=|>|<)/.test(trimLine);
+        const hasAssert = /==|<=|>=|<|>/.test(trimLine);
 
         if (hasAssign && hasAssert) {
             addError(diagnostics, lineNum, '一行只能是赋值(=)或断言(==/<>)');
@@ -128,9 +129,7 @@ function validateScript(document: vscode.TextDocument) {
             }
         }
         else if (hasAssert) {
-            if (!trimLine.includes('app_bat_ctx.voltage')) {
-                addError(diagnostics, lineNum, '断言必须使用 app_bat_ctx.voltage');
-            }
+            // 无任何强制变量要求，支持任意变量断言：xxx==222 / a>10 / b<=5 等
         }
         else {
             addError(diagnostics, lineNum, '仅支持赋值或断言语句');
